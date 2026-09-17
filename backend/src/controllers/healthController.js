@@ -1,8 +1,7 @@
+const { getHealthStatus } = require("../services/healthService");
+
 const healthCheck = (req, res) => {
-  res.json({
-    status: "ok",
-    message: "Backend API is running"
-  });
+  res.json(getHealthStatus());
 };
 
 module.exports = {
