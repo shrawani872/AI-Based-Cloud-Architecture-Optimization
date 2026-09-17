@@ -4,11 +4,11 @@ const helmet = require("helmet");
 require("dotenv").config();
 
 const app = express();
-
+const apiRoutes = require("./routes");
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
-
+app.use("/api/v1", apiRoutes);
 app.get("/api/v1/health", (req, res) => {
   res.json({
     status: "ok"
