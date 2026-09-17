@@ -2,11 +2,12 @@ const express = require("express");
 const { healthCheck } = require("../controllers/healthController");
 const { awsStatusCheck } = require("../controllers/awsController");
 const { aiStatusCheck } = require("../controllers/aiController");
-
+const { recommendationCheck } = require("../controllers/recommendationController");
 const router = express.Router();
 
 router.get("/health", healthCheck);
 router.get("/aws/status", awsStatusCheck);
 router.get("/ai/status", aiStatusCheck);
+router.post("/recommendation", recommendationCheck);
 
 module.exports = router;
