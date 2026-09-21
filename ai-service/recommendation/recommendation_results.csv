@@ -1,0 +1,9 @@
+series_id,recommendation_type,confidence,reason,source
+ec2_cpu_utilization_24ae8d,SCALE_IN,0.55,All forecast metrics remain well below typical utilization with no anomaly.,rule_based_fallback
+ec2_cpu_utilization_5f5533,MONITOR,0.4,A lower-severity anomaly is present; not yet clearly actionable.,rule_based_fallback
+ec2_cpu_utilization_ac20cd,MONITOR,0.4,A lower-severity anomaly is present; not yet clearly actionable.,rule_based_fallback
+ec2_disk_write_bytes_c0d644,SCALE_OUT,0.6,Forecast trending toward saturation on at least one metric.,rule_based_fallback
+ec2_network_in_5abac7,SCALE_OUT,0.6,Forecast trending toward saturation on at least one metric.,rule_based_fallback
+elb_request_count_8c0756,NO_ACTION,0.5,No anomaly and forecast within normal range.,rule_based_fallback
+grok_asg_anomaly,INVESTIGATE,0.65,High-severity anomaly detected without a clear capacity-driven forecast trend.,rule_based_fallback
+rds_cpu_utilization_cc0c53,INVESTIGATE,0.65,High-severity anomaly detected without a clear capacity-driven forecast trend.,rule_based_fallback
