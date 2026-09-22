@@ -1,11 +1,7 @@
 """
 recommendation_engine.py — calls the Gemini API, forces its reply into the
-strict Recommendation schema via Gemini's native structured-output support
-(response_mime_type="application/json" + response_schema), validates it a
-second time with pydantic, and falls back to the rule-based recommender on
-ANY failure (missing key, network error, timeout, malformed output).
-
-Docs: https://ai.google.dev/gemini-api/docs/structured-output
+strict Recommendation schema via structured output, validates it with pydantic,
+enriches it with AWS cost analysis, and falls back to rule-based logic on any failure.
 """
 
 import os
@@ -14,24 +10,24 @@ import time
 import logging
 
 from dotenv import load_dotenv
-load_dotenv()  # reads a .env file in the current directory, if present
 
-from schemas import RecommendationInput, Recommendation, LLMRecommendation
+load_dotenv()
+_env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+if os.path.exists(_env_file):
+    load_dotenv(_env_file)
+
+from schemas import RecommendationInput, Recommendation, LLMRecommendation, CostSignal
 from prompts import SYSTEM_PROMPT, build_user_message
 from rule_based_fallback import rule_based_recommendation
+from cost_engine import estimate_cost_metrics, compute_scale_action_cost_impact
 
 logger = logging.getLogger("recommendation_engine")
 
-# "gemini-flash-latest" auto-tracks Google's current flash model, so you don't
-# need to update this every time a new version ships. Override with the
-# GEMINI_MODEL env var if you want to pin a specific version instead.
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
 
 
 def _generate_with_retry(client, contents, config, max_retries: int = 3):
-    """Calls generate_content, retrying transient errors with backoff.
-    Either returns a response, or raises the exception from the final
-    attempt — never returns/raises None, so callers get a clean type."""
+    """Calls generate_content, retrying transient errors with backoff."""
     for attempt in range(max_retries):
         try:
             return client.models.generate_content(
@@ -44,16 +40,14 @@ def _generate_with_retry(client, contents, config, max_retries: int = 3):
             )
             if is_last or not transient:
                 raise
-            wait = 2 ** (attempt + 1)  # 2s, 4s, 8s
+            wait = 2 ** (attempt + 1)
             logger.warning("Gemini call failed (%s), retrying in %ds (attempt %d/%d)",
                             e, wait, attempt + 1, max_retries)
             time.sleep(wait)
-    # unreachable: the loop above always either returns or raises
     raise RuntimeError("generate_content retry loop exited unexpectedly")
 
 
 def _call_llm(inp: RecommendationInput) -> Recommendation:
-    """Raises on any failure — callers must catch and fall back."""
     from google import genai
     from google.genai import types
 
@@ -69,16 +63,11 @@ def _call_llm(inp: RecommendationInput) -> Recommendation:
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
             response_mime_type="application/json",
-            # passing the Pydantic class (not a hand-written schema dict)
-            # lets the SDK build Google's Schema format correctly
             response_schema=LLMRecommendation,
             temperature=0.2,
         ),
     )
 
-    # response.parsed is the SDK's own validated LLMRecommendation instance;
-    # fall back to manually parsing response.text if a given SDK version
-    # doesn't populate .parsed
     parsed = getattr(response, "parsed", None)
     if parsed is not None:
         data = parsed.model_dump()
@@ -88,16 +77,58 @@ def _call_llm(inp: RecommendationInput) -> Recommendation:
         data = json.loads(response.text)
 
     data["source"] = "llm"
-    # second layer of validation: pydantic re-checks the data even though
-    # response_schema already constrained it at generation time
+
+    # Attach cost signal if present or compute it
+    current_cpu = 50.0
+    pred_cpu = 50.0
+    for f in inp.forecast:
+        if "cpu" in f.metric.lower() or f.metric == "value":
+            current_cpu = f.current_value
+            pred_cpu = f.predicted_value
+            break
+
+    if inp.cost:
+        data["cost_estimate"] = inp.cost.model_dump()
+    else:
+        raw_cost = estimate_cost_metrics(
+            resource_id=inp.resource_id,
+            current_utilization=current_cpu,
+            predicted_utilization=pred_cpu,
+            instance_type=inp.instance_type,
+        )
+        data["cost_estimate"] = CostSignal(
+            instance_type=raw_cost.instance_type,
+            hourly_rate_usd=raw_cost.hourly_rate_usd,
+            current_daily_cost_usd=raw_cost.current_daily_cost_usd,
+            idle_waste_daily_cost_usd=raw_cost.idle_waste_daily_cost_usd,
+            projected_monthly_cost_usd=raw_cost.projected_monthly_cost_usd,
+            estimated_daily_savings_usd=raw_cost.estimated_daily_savings_usd,
+            estimated_monthly_savings_usd=raw_cost.estimated_monthly_savings_usd,
+            recommended_instance_type=raw_cost.recommended_instance_type,
+            cost_status=raw_cost.cost_status,
+        ).model_dump()
+
+    # If LLM omitted impact strings, populate from cost engine
+    if not data.get("expected_cost_impact") or not data.get("expected_reliability_impact"):
+        impacts = compute_scale_action_cost_impact(
+            resource_id=inp.resource_id,
+            recommendation_type=data.get("recommendation_type", "NO_ACTION"),
+            current_utilization=current_cpu,
+            predicted_utilization=pred_cpu,
+            instance_type=inp.instance_type,
+        )
+        if not data.get("expected_cost_impact"):
+            data["expected_cost_impact"] = impacts.get("expected_cost_impact")
+        if not data.get("expected_reliability_impact"):
+            data["expected_reliability_impact"] = impacts.get("expected_reliability_impact")
+
     return Recommendation(**data)
 
 
 def get_recommendation(inp: RecommendationInput, use_llm: bool = True) -> Recommendation:
     """
-    Main entry point. Always returns a valid Recommendation — never raises —
-    so callers (FastAPI endpoint, batch script) don't need their own
-    try/except around this.
+    Main recommendation engine entry point. Always returns a valid, schema-compliant
+    Recommendation with cost estimations and reliability impacts.
     """
     if use_llm:
         try:
@@ -109,16 +140,16 @@ def get_recommendation(inp: RecommendationInput, use_llm: bool = True) -> Recomm
 
 
 if __name__ == "__main__":
-    # quick manual check — run: python recommendation_engine.py
     from schemas import ForecastSignal, AnomalySignal
 
     demo_input = RecommendationInput(
         resource_id="ec2-demo-1",
-        forecast=[ForecastSignal(metric="cpu_utilization", current_value=74.0,
-                                  predicted_value=93.0, horizon_minutes=20)],
-        anomaly=[AnomalySignal(metric="cpu_utilization", is_anomaly=True,
-                                severity="HIGH", score=0.81,
-                                reason="usage far outside recent normal range")],
+        instance_type="m5.2xlarge",
+        forecast=[ForecastSignal(metric="cpu_utilization", current_value=12.0,
+                                  predicted_value=15.0, horizon_minutes=20)],
+        anomaly=[AnomalySignal(metric="cpu_utilization", is_anomaly=False,
+                                severity="INFO", score=0.15,
+                                reason="well within learned baseline")],
     )
-    result = get_recommendation(demo_input, use_llm=True)
+    result = get_recommendation(demo_input, use_llm=False)
     print(result.model_dump_json(indent=2))
