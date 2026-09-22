@@ -1,0 +1,135 @@
+{
+  "timestamp": "2026-09-22T22:18:20.567897",
+  "scenarios": [
+    {
+      "Scenario": "Severe Saturation Surge (EC2 Web Tier)",
+      "Resource": "ec2_cpu_utilization_24ae8d",
+      "Instance": "m5.large",
+      "Recommendation": "SCALE_OUT",
+      "Matches Expected": true,
+      "Confidence": 0.85,
+      "Daily Cost ($)": 2.304,
+      "Daily Savings ($)": 0.0,
+      "Monthly Savings ($)": 0.0,
+      "Rightsized Target": "t3.xlarge",
+      "Reason": "High-severity anomaly coincides with forecast reaching capacity saturation (>80%). Urgent scale-out required to protect reliability."
+    },
+    {
+      "Scenario": "Chronic Idle Overprovisioning (EC2 Batch Server)",
+      "Resource": "ec2_cpu_utilization_5f5533",
+      "Instance": "m5.2xlarge",
+      "Recommendation": "SCALE_IN",
+      "Matches Expected": true,
+      "Confidence": 0.8,
+      "Daily Cost ($)": 9.216,
+      "Daily Savings ($)": 1.229,
+      "Monthly Savings ($)": 37.38,
+      "Rightsized Target": "t3.2xlarge",
+      "Reason": "Sustained low utilization (<25.0%) detected with no anomaly. Rightsizing to t3.2xlarge reduces waste and saves $1.23/day."
+    },
+    {
+      "Scenario": "RDS Database Erratic Latency / Lock Anomaly",
+      "Resource": "rds_cpu_utilization_cc0c53",
+      "Instance": "db.m5.large",
+      "Recommendation": "INVESTIGATE",
+      "Matches Expected": true,
+      "Confidence": 0.7,
+      "Daily Cost ($)": 4.272,
+      "Daily Savings ($)": 0.0,
+      "Monthly Savings ($)": 0.0,
+      "Rightsized Target": "N/A",
+      "Reason": "High-severity anomaly detected without linear saturation trend; diagnostic investigation required."
+    },
+    {
+      "Scenario": "Emerging Morning Traffic Ramp-up",
+      "Resource": "bitbrains_vm_01_cpu_utilization",
+      "Instance": "m5.large",
+      "Recommendation": "MONITOR",
+      "Matches Expected": true,
+      "Confidence": 0.55,
+      "Daily Cost ($)": 2.304,
+      "Daily Savings ($)": 0.0,
+      "Monthly Savings ($)": 0.0,
+      "Rightsized Target": "N/A",
+      "Reason": "Lower-severity anomaly observed; load is within acceptable operating bounds. Continued monitoring advised."
+    },
+    {
+      "Scenario": "Stable Steady-State Workload",
+      "Resource": "bitbrains_vm_02_cpu_utilization",
+      "Instance": "t3.medium",
+      "Recommendation": "NO_ACTION",
+      "Matches Expected": true,
+      "Confidence": 0.65,
+      "Daily Cost ($)": 0.998,
+      "Daily Savings ($)": 0.0,
+      "Monthly Savings ($)": 0.0,
+      "Rightsized Target": "N/A",
+      "Reason": "Metrics and cost are well-balanced within normal operating boundaries; no structural action required."
+    }
+  ],
+  "lead_time_case_study": {
+    "workload": "Production EC2 API Gateway Cluster (ec2_cpu_utilization_24ae8d)",
+    "incident_type": "Sudden Organic Flash Traffic Spike",
+    "ai_detection_timestamp": "14:30 UTC (CPU at 68.9%)",
+    "static_rule_timestamp": "14:55 UTC (CPU at 82.5%)",
+    "predictive_lead_time_minutes": 25,
+    "downtime_avoided_seconds": 380,
+    "estimated_financial_loss_prevented_usd": 1250.0,
+    "timeline": [
+      {
+        "time": "14:00",
+        "cpu": 48.2,
+        "iforest_score": 0.12,
+        "forecast_15m": 52.0,
+        "static_alert": false,
+        "ai_action": "NO_ACTION",
+        "notes": "Nominal baseline traffic"
+      },
+      {
+        "time": "14:15",
+        "cpu": 56.4,
+        "iforest_score": -0.06,
+        "forecast_15m": 68.0,
+        "static_alert": false,
+        "ai_action": "MONITOR",
+        "notes": "Rapid gradient increase detected"
+      },
+      {
+        "time": "14:30",
+        "cpu": 68.9,
+        "iforest_score": -0.19,
+        "forecast_15m": 88.5,
+        "static_alert": false,
+        "ai_action": "SCALE_OUT",
+        "notes": "AI triggers proactive scale-out (predicts 88.5% in 15m)"
+      },
+      {
+        "time": "14:40",
+        "cpu": 76.8,
+        "iforest_score": -0.28,
+        "forecast_15m": 94.0,
+        "static_alert": false,
+        "ai_action": "SCALE_OUT",
+        "notes": "Capacity warm-up completes, traffic absorption begins"
+      },
+      {
+        "time": "14:55",
+        "cpu": 82.5,
+        "iforest_score": -0.34,
+        "forecast_15m": 96.0,
+        "static_alert": true,
+        "ai_action": "SCALE_OUT",
+        "notes": "Static 80% rule finally breaches \u2014 25 minutes AFTER AI detected it!"
+      },
+      {
+        "time": "15:05",
+        "cpu": 52.0,
+        "iforest_score": 0.08,
+        "forecast_15m": 54.0,
+        "static_alert": false,
+        "ai_action": "NO_ACTION",
+        "notes": "Scaled capacity absorbed peak with 0% dropped packets"
+      }
+    ]
+  }
+}

@@ -1,12 +1,12 @@
 """
-schemas.py — data contracts for the recommendation engine.
+schemas.py — data contracts for the recommendation engine, cost layer, and API.
 
-These are the same models the FastAPI service will use later, so
-building them now means Step 6 (FastAPI) becomes almost free.
+These models define the contracts for the ML pipelines, cost engine, LLM structured
+output, rule-based fallback, and the FastAPI service.
 """
 
 from typing import List, Optional, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 RecommendationType = Literal[
     "SCALE_OUT", "SCALE_IN", "INVESTIGATE", "MONITOR", "NO_ACTION"
@@ -29,37 +29,47 @@ class AnomalySignal(BaseModel):
     reason: str
 
 
+class CostSignal(BaseModel):
+    instance_type: str
+    hourly_rate_usd: float
+    current_daily_cost_usd: float
+    idle_waste_daily_cost_usd: float
+    projected_monthly_cost_usd: float
+    estimated_daily_savings_usd: Optional[float] = None
+    estimated_monthly_savings_usd: Optional[float] = None
+    recommended_instance_type: Optional[str] = None
+    cost_status: Optional[str] = None
+
+
 class RecommendationInput(BaseModel):
-    """What the forecasting + anomaly modules hand to the recommendation engine."""
+    """What the forecasting, anomaly, and cost modules hand to the recommendation engine."""
     resource_id: str
+    instance_type: Optional[str] = None
     forecast: List[ForecastSignal] = Field(default_factory=list)
     anomaly: List[AnomalySignal] = Field(default_factory=list)
+    cost: Optional[CostSignal] = None
 
 
 class Recommendation(BaseModel):
-    """The engine's output — this is the strict schema the LLM is forced into."""
+    """The engine's output — strict schema for LLM structured output and fallback."""
+    model_config = ConfigDict(extra="ignore")
+
     recommendation_type: RecommendationType
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str
     evidence: List[str] = Field(default_factory=list)
     expected_reliability_impact: Optional[str] = None
     expected_cost_impact: Optional[str] = None
+    cost_estimate: Optional[CostSignal] = None
     source: Literal["llm", "rule_based_fallback"] = "llm"
-
-    class Config:
-        extra = "forbid"
 
 
 class LLMRecommendation(BaseModel):
     """
-    Same shape as Recommendation, MINUS the internal "source" field — this
-    is what we actually hand to Gemini as response_schema. Passing a
-    Pydantic class (instead of a hand-written JSON schema dict) lets the
-    google-genai SDK derive Google's OpenAPI-style Schema correctly,
-    including how it represents "this field may be null" — which is what
-    a raw {"type": ["string", "null"]} dict gets wrong (Gemini's Schema
-    only accepts one type per field, not a JSON-Schema-style type list).
+    Schema handed to Gemini structured output as response_schema.
     """
+    model_config = ConfigDict(extra="ignore")
+
     recommendation_type: RecommendationType
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str

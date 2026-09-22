@@ -1,6 +1,6 @@
 """
 model_registry.py — loads the per-series .joblib models saved by
-train_anomaly.py / train_forecast.py, and caches them in memory so a
+train_anomaly.py / train_forecast.py / train_multidim.py, and caches them in memory so a
 busy API doesn't hit disk on every single request.
 """
 
@@ -9,7 +9,7 @@ import threading
 import joblib
 
 _cache = {}
-_lock = threading.Lock()  # joblib.load isn't guaranteed thread-safe under concurrent first-loads
+_lock = threading.Lock()
 
 
 class ModelNotFoundError(FileNotFoundError):
@@ -18,7 +18,7 @@ class ModelNotFoundError(FileNotFoundError):
         self.resource_id = resource_id
         super().__init__(
             f"No trained {kind} model for resource_id='{resource_id}' "
-            f"(expected {path}). Train it first with train_{kind}.py."
+            f"(expected {path}). Train it first with train_{kind}.py or train_multidim.py."
         )
 
 
@@ -26,7 +26,7 @@ def _load_cached(path: str, kind: str, resource_id: str):
     if path in _cache:
         return _cache[path]
     with _lock:
-        if path in _cache:  # re-check after acquiring the lock
+        if path in _cache:
             return _cache[path]
         if not os.path.exists(path):
             raise ModelNotFoundError(kind, resource_id, path)
@@ -54,6 +54,10 @@ def _find_model_path(kind: str, resource_id: str, modeldir: str) -> str:
         cpu_models = [f for f in matching_files if "cpu" in f.lower()]
         if cpu_models:
             return os.path.join(modeldir, sorted(cpu_models)[0])
+    elif "mem" in res_lower:
+        mem_models = [f for f in matching_files if "mem" in f.lower()]
+        if mem_models:
+            return os.path.join(modeldir, sorted(mem_models)[0])
     elif "network" in res_lower:
         net_models = [f for f in matching_files if "network" in f.lower()]
         if net_models:

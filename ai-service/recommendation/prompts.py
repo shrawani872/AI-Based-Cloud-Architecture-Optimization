@@ -1,50 +1,44 @@
 """
-prompts.py — turns a RecommendationInput into the system + user prompt
-sent to the LLM.
+prompts.py — turns a RecommendationInput (including forecast, anomaly, and cost signals)
+into system and user prompts sent to the LLM.
 """
 
 from schemas import RecommendationInput
 
-SYSTEM_PROMPT = """You are the recommendation component of a cloud resource
-optimization system. You receive ONLY structured numeric signals derived from
-monitoring models (a forecasting model and an anomaly-detection model) — never
-raw infrastructure access, credentials, or the ability to execute anything.
+SYSTEM_PROMPT = """You are the recommendation and cost-optimization component of an intelligent cloud architecture system.
+You receive structured numeric signals derived from ML monitoring models (time-series forecasting, unsupervised anomaly detection)
+and real-world AWS pricing models — never raw infrastructure access or execution credentials.
 
-Your job is to pick exactly one recommendation type and justify it:
-- SCALE_OUT: add capacity now or very soon (forecast trending toward saturation,
-  and/or an active reliability-impacting anomaly on a saturation-related metric).
-- SCALE_IN: capacity appears underutilized with no reliability risk, and forecast
-  shows sustained low usage — an opportunity to reduce cost.
-- INVESTIGATE: an anomaly is present but doesn't clearly indicate a capacity
-  action (e.g. contradictory signals, or a metric anomaly not explained by load).
-- MONITOR: a mild signal exists (e.g. forecast approaching a threshold, or a
-  low-severity anomaly) that isn't yet actionable but is worth watching.
-- NO_ACTION: metrics and forecast are normal, no anomaly, nothing to do.
+Your job is to pick exactly one recommendation type and justify it with technical and economic precision:
+- SCALE_OUT: add capacity or scale up instance tier (forecast trending toward saturation >80%, and/or high-severity anomaly). Prioritize reliability; quantify added daily cost impact.
+- SCALE_IN: capacity is underutilized (<25%) with no active reliability risk and forecast indicates sustained low demand. Quantify dollar savings ($/day, $/mo) and proposed rightsized instance.
+- INVESTIGATE: an anomaly is present that does not clearly indicate a standard capacity scaling action (e.g. erratic spikes, low-load anomalies, flapping metrics).
+- MONITOR: mild signals (forecast approaching moderate load 65-75%, or low-severity anomaly) that are not yet immediately actionable.
+- NO_ACTION: metrics and forecast are within normal operating bounds, baseline cost is efficient, no action needed.
 
 Rules:
-1. Output ONLY through the emit_recommendation tool. Never output free text
-   recommending an action outside that schema.
-2. Your output is a proposal for a HUMAN to review — never phrase it as
-   something that will happen automatically, and never include shell
-   commands, API calls, or executable instructions of any kind.
-3. Cite the specific evidence (metric names, values, severities) you were
-   given — do not invent numbers you weren't given.
-4. If evidence is weak or absent, prefer MONITOR or NO_ACTION over a
-   stronger action — false alarms have a cost too.
-5. Confidence should reflect how directly the evidence supports the chosen
-   action, not how important the situation feels."""
+1. Output ONLY valid JSON strictly adhering to the schema.
+2. Your output is an advisory proposal for human engineers / SREs — never phrase it as an irrevocable automated action.
+3. Explicitly cite given evidence (metrics, predicted values, anomaly scores, instance types, and dollar savings/costs) — never invent unsupported numbers.
+4. For SCALE_IN, always cite estimated dollar savings and waste reduction in the expected_cost_impact field.
+5. If evidence is ambiguous, prefer MONITOR over premature scaling.
+"""
 
 
 def build_user_message(inp: RecommendationInput) -> str:
-    lines = [f"resource_id: {inp.resource_id}", "", "FORECAST SIGNALS:"]
+    lines = [
+        f"Resource ID: {inp.resource_id}",
+        f"Instance Type: {inp.instance_type or 'Auto-detected / Standard'}",
+        "",
+        "FORECAST SIGNALS:",
+    ]
     if not inp.forecast:
         lines.append("  (none provided)")
     for f in inp.forecast:
         delta = f.predicted_value - f.current_value
         lines.append(
             f"  - {f.metric}: current={f.current_value:.2f}, "
-            f"predicted in {f.horizon_minutes}min={f.predicted_value:.2f} "
-            f"(delta={delta:+.2f})"
+            f"predicted in {f.horizon_minutes}m={f.predicted_value:.2f} (delta={delta:+.2f})"
         )
 
     lines.append("")
@@ -58,6 +52,17 @@ def build_user_message(inp: RecommendationInput) -> str:
         )
 
     lines.append("")
-    lines.append("Decide the single best recommendation_type per the system rules "
-                  "and call emit_recommendation.")
+    lines.append("COST & EFFICIENCY SIGNALS:")
+    if inp.cost:
+        c = inp.cost
+        lines.append(f"  - Current Instance: {c.instance_type} (${c.hourly_rate_usd:.4f}/hr, ${c.current_daily_cost_usd:.2f}/day)")
+        lines.append(f"  - Estimated Idle Waste: ${c.idle_waste_daily_cost_usd:.2f}/day (${c.idle_waste_daily_cost_usd * 30.416:.2f}/mo)")
+        if c.recommended_instance_type and c.estimated_daily_savings_usd:
+            lines.append(f"  - Rightsizing Target: {c.recommended_instance_type} (Potential savings: ${c.estimated_daily_savings_usd:.2f}/day, ${c.estimated_monthly_savings_usd:.2f}/mo)")
+        lines.append(f"  - Status: {c.cost_status or 'N/A'}")
+    else:
+        lines.append("  (derived from default AWS instance catalog)")
+
+    lines.append("")
+    lines.append("Decide the single best recommendation_type, quantify reliability and cost impacts, and output the response.")
     return "\n".join(lines)
