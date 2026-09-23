@@ -1,0 +1,72 @@
+/**
+ * Mock data for System & Agent Health Status
+ */
+export const mockSystemHealth = {
+  overallStatus: 'HEALTHY',
+  healthScore: 98.4,
+  lastHealthCheck: new Date().toISOString(),
+  uptimePercent: 99.98,
+  services: [
+    {
+      id: 'backend',
+      name: 'Backend API Server',
+      shortName: 'Backend',
+      type: 'API Gateway & Core Runtime',
+      status: 'HEALTHY',
+      latencyMs: 24,
+      throughput: '3,240 req/min',
+      uptime: '99.99%',
+      lastHeartbeat: new Date(Date.now() - 3 * 1000).toISOString(),
+      lastChecked: new Date(Date.now() - 3 * 1000).toISOString(),
+      details: 'Node.js REST API gateway, zero 5xx errors in last 24h',
+    },
+    {
+      id: 'postgres',
+      name: 'PostgreSQL Database',
+      shortName: 'PostgreSQL',
+      type: 'Primary Relational Store',
+      status: 'HEALTHY',
+      latencyMs: 8,
+      throughput: 'Pool: 18/50 conn (36%)',
+      uptime: '99.98%',
+      lastHeartbeat: new Date(Date.now() - 5 * 1000).toISOString(),
+      lastChecked: new Date(Date.now() - 5 * 1000).toISOString(),
+      details: 'AWS RDS Postgres 15.4, replica replication lag < 4ms',
+    },
+    {
+      id: 'ai_service',
+      name: 'AI Optimization Service',
+      shortName: 'AI Service',
+      type: 'LLM & Decision Support Engine',
+      status: 'HEALTHY',
+      latencyMs: 485,
+      throughput: '12 active proposals',
+      uptime: '99.95%',
+      lastHeartbeat: new Date(Date.now() - 8 * 1000).toISOString(),
+      lastChecked: new Date(Date.now() - 8 * 1000).toISOString(),
+      details: 'Anthropic Claude 3.5 Sonnet / AWS Bedrock integration healthy',
+    },
+    {
+      id: 'aws_connectivity',
+      name: 'AWS Cloud Connectivity',
+      shortName: 'AWS Connectivity',
+      type: 'CloudWatch & Telemetry Stream',
+      status: 'HEALTHY',
+      latencyMs: 38,
+      throughput: '1,420 events/sec',
+      uptime: '99.99%',
+      lastHeartbeat: new Date(Date.now() - 2 * 1000).toISOString(),
+      lastChecked: new Date(Date.now() - 2 * 1000).toISOString(),
+      details: 'Active stream ingestion from us-east-1, IAM role authenticated',
+    },
+  ],
+  systemMetrics: {
+    cpuUsage: 24.5,
+    memoryUsage: 41.2,
+    diskUsage: 33.8,
+    activeAgentWorkers: 4,
+    unhandledErrorsCount: 0,
+  },
+};
+
+export default mockSystemHealth;

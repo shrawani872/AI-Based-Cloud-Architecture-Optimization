@@ -1,0 +1,9 @@
+export { default as DashboardPage } from './DashboardPage';
+export { default as RecommendationsPage } from './RecommendationsPage';
+export { default as RecommendationDetailPage } from './RecommendationDetailPage';
+export { default as TelemetryPage } from './TelemetryPage';
+export { default as ForecastsPage } from './ForecastsPage';
+export { default as AnomaliesPage } from './AnomaliesPage';
+export { default as HistoryPage } from './HistoryPage';
+export { default as SettingsPage } from './SettingsPage';
+export { default as SystemStatusPage } from './SystemStatusPage';
