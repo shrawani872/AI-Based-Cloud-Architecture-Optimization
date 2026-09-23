@@ -1,46 +1,71 @@
 """
-main.py — the AI Service's HTTP API. This file is intentionally thin:
-all the real logic lives in inference.py (and, beneath that, in
-feature_utils.py, model_registry.py, and recommendation/), so this file
-is just request/response wiring and HTTP status codes.
+main.py — FastAPI HTTP Service for AI-Based Cloud Architecture Optimization.
 
-Run from inside ai-service/app/:
+Exposes REST endpoints for:
+- /health: Service readiness and loaded model resources
+- /forecast: Time-series predictive forecasting
+- /anomaly: Unsupervised Isolation Forest anomaly detection
+- /cost: Real-world AWS EC2/RDS pricing, waste, and rightsizing analysis
+- /recommend: Decision engine generating SCALE_OUT, SCALE_IN, INVESTIGATE, MONITOR, NO_ACTION
+- /analyze: All-in-one unified telemetry analysis pipeline
+
+Run with:
     uvicorn main:app --reload --port 8000
-
-Then open http://localhost:8000/docs for interactive API docs — that URL
-is what you share with your backend teammate as the live API contract.
 """
 
 import os
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Dict, Any
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from feature_utils import InsufficientHistoryError
 from model_registry import ModelNotFoundError
+from cost_engine import CostEstimate
 import inference
 
 app = FastAPI(
     title="Cloud Architecture Optimization — AI Service",
-    description="Forecasting, anomaly detection, and recommendation endpoints "
-                "for the AI-Based Cloud Architecture Optimization project.",
-    version="1.0.0",
+    description="Forecasting, anomaly detection, AWS cost optimization, and recommendation "
+                "endpoints for the AI-Based Cloud Architecture Optimization project.",
+    version="1.2.0",
 )
 
-MODELDIR = os.environ.get("AI_SERVICE_MODELDIR", os.path.join("..", "models"))
+
+def _resolve_modeldir() -> str:
+    if "AI_SERVICE_MODELDIR" in os.environ:
+        return os.environ["AI_SERVICE_MODELDIR"]
+    candidates = [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "models"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "models"),
+        "models",
+        os.path.join("..", "models"),
+    ]
+    for c in candidates:
+        if os.path.isdir(c) and len(os.listdir(c)) > 0:
+            return os.path.abspath(c)
+    return os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "models"))
+
+
+MODELDIR = _resolve_modeldir()
 
 
 # ---------------------------------------------------------------------------
-# Request / response schemas for THIS API layer. (RecommendationInput /
-# Recommendation for /recommend come from recommendation/schemas.py, via
-# inference.py, since that contract already exists and is tested.)
+# Request / Response Schemas
 # ---------------------------------------------------------------------------
 
 class SeriesRequest(BaseModel):
-    resource_id: str = Field(..., description="Must match a series a model was trained for, e.g. 'ec2_cpu_utilization_24ae8d'.")
-    timestamps: List[str] = Field(..., description="ISO-8601 timestamps, any order, at least 13 points.")
-    values: List[float] = Field(..., description="Metric values, same length and order as timestamps.")
+    resource_id: str = Field(..., description="Must match a trained series e.g. 'ec2_cpu_utilization_24ae8d' or 'bitbrains_vm_01'.")
+    timestamps: List[str] = Field(..., description="ISO-8601 timestamps, at least 13 points.")
+    values: List[float] = Field(..., description="Metric values, matching timestamp count.")
+    instance_type: Optional[str] = Field(None, description="Optional AWS instance type override (e.g. 'm5.large').")
+
+
+class CostRequest(BaseModel):
+    resource_id: str = Field(..., description="Resource ID")
+    current_utilization: float = Field(..., ge=0.0, le=100.0, description="Current CPU or memory utilization %")
+    predicted_utilization: float = Field(..., ge=0.0, le=100.0, description="Predicted peak or horizon utilization %")
+    instance_type: Optional[str] = Field(None, description="AWS instance type, e.g. 'm5.2xlarge', 't3.medium'")
 
 
 class ForecastResponse(BaseModel):
@@ -64,8 +89,10 @@ class AnomalyResponse(BaseModel):
 
 class RecommendRequest(BaseModel):
     resource_id: str
+    instance_type: Optional[str] = None
     forecast: List[dict] = Field(default_factory=list, description="List of {metric, current_value, predicted_value, horizon_minutes}.")
     anomaly: List[dict] = Field(default_factory=list, description="List of {metric, is_anomaly, severity, score, reason}.")
+    cost: Optional[dict] = Field(None, description="Optional precomputed cost breakdown")
     use_llm: bool = True
 
 
@@ -77,11 +104,11 @@ class HealthResponse(BaseModel):
     status: str
     available_resource_ids: List[str]
     gemini_api_key_configured: bool
+    cost_engine_ready: bool
 
 
 # ---------------------------------------------------------------------------
-# Error handling helper — every endpoint below funnels its known error
-# types through this so the HTTP status codes stay consistent.
+# Error Handling Helper
 # ---------------------------------------------------------------------------
 
 def _run_or_translate_errors(fn, *args, **kwargs):
@@ -96,7 +123,7 @@ def _run_or_translate_errors(fn, *args, **kwargs):
 
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# API Endpoints
 # ---------------------------------------------------------------------------
 
 @app.get("/health", response_model=HealthResponse)
@@ -118,20 +145,31 @@ def anomaly(req: SeriesRequest):
     )
 
 
+@app.post("/cost", response_model=CostEstimate)
+def cost(req: CostRequest):
+    return inference.run_cost(
+        resource_id=req.resource_id,
+        current_utilization=req.current_utilization,
+        predicted_utilization=req.predicted_utilization,
+        instance_type=req.instance_type,
+    )
+
+
 @app.post("/recommend")
 def recommend(req: RecommendRequest):
-    # imported here (not at module top) so a missing recommendation/
-    # package only breaks this endpoint, not the whole app, at import time
-    from schemas import RecommendationInput, ForecastSignal, AnomalySignal
+    from schemas import RecommendationInput, ForecastSignal, AnomalySignal, CostSignal
 
     try:
+        cost_sig = CostSignal(**req.cost) if req.cost else None
         rec_input = RecommendationInput(
             resource_id=req.resource_id,
+            instance_type=req.instance_type,
             forecast=[ForecastSignal(**f) for f in req.forecast],
             anomaly=[AnomalySignal(**a) for a in req.anomaly],
+            cost=cost_sig,
         )
     except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Invalid forecast/anomaly payload: {e}")
+        raise HTTPException(status_code=422, detail=f"Invalid recommendation payload: {e}")
 
     result = inference.run_recommend(rec_input, use_llm=req.use_llm)
     return result.model_dump()
@@ -140,6 +178,12 @@ def recommend(req: RecommendRequest):
 @app.post("/analyze")
 def analyze(req: AnalyzeRequest):
     result = _run_or_translate_errors(
-        inference.run_analyze, req.resource_id, req.timestamps, req.values, MODELDIR, req.use_llm
+        inference.run_analyze,
+        req.resource_id,
+        req.timestamps,
+        req.values,
+        MODELDIR,
+        req.use_llm,
+        req.instance_type,
     )
     return result

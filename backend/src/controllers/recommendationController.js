@@ -1,5 +1,6 @@
 const prisma = require("../config/db");
 const { generateRecommendation } = require("../services/recommendationService");
+const { validateRecommendation } = require("../validators/recommendationValidator");
 
 const getRecommendations = async (req, res, next) => {
   try {
@@ -71,7 +72,17 @@ const rejectRecommendation = async (req, res, next) => {
 };
 
 const recommendationCheck = (req, res) => {
-  const result = generateRecommendation(req.body);
+  const validation = validateRecommendation(req.body);
+
+  if (!validation.success) {
+    return res.status(400).json({
+      status: "error",
+      message: "Invalid recommendation request",
+      errors: validation.error.issues
+    });
+  }
+
+  const result = generateRecommendation(validation.data);
   res.json(result);
 };
 

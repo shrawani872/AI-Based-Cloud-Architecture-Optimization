@@ -1,51 +1,36 @@
 """
-inference.py — the actual business logic behind every endpoint, kept
-separate from FastAPI itself so it can be tested (and was tested) without
-needing the web framework installed. main.py is a thin wrapper around
-these functions.
+inference.py — business logic for all AI Service endpoints (forecasting,
+anomaly detection, cost estimation, and recommendation generation).
 """
 
 import os
 import sys
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from feature_utils import build_feature_row, inferred_horizon_minutes, ANOMALY_FEATURES, FORECAST_FEATURES
 from model_registry import get_anomaly_model, get_forecast_model, available_resource_ids
+from cost_engine import estimate_cost_metrics, CostEstimate
 
-# recommendation/ is a sibling folder of app/, and its files use bare
-# imports ("from schemas import ..."), so we add it to sys.path rather
-# than requiring it to be restructured as a package.
+# Add recommendation module to sys.path
 _RECS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "recommendation")
 if _RECS_DIR not in sys.path:
     sys.path.insert(0, _RECS_DIR)
 
-from schemas import RecommendationInput, ForecastSignal, AnomalySignal, Recommendation  # noqa: E402
-# pyrefly: ignore [missing-import]
-from recommendation_engine import get_recommendation  # noqa: E402
+from schemas import RecommendationInput, ForecastSignal, AnomalySignal, Recommendation, CostSignal
+from recommendation_engine import get_recommendation
 
 
 def _metric_name_for(resource_id: str) -> str:
-    if "cpu" in resource_id:
+    res_lower = resource_id.lower()
+    if "cpu" in res_lower:
         return "cpu_utilization"
-    if "network" in resource_id:
+    if "network" in res_lower:
         return "network_in"
-    if "disk" in resource_id:
+    if "disk" in res_lower:
         return "disk_write_bytes"
+    if "mem" in res_lower:
+        return "memory_utilization"
     return "value"
-
-
-def _severity_from_score(score: float, low_q: float, high_q: float) -> str:
-    """Maps an Isolation Forest decision_function score to a severity band.
-    Lower score = more anomalous. low_q/high_q come from the TRAIN
-    distribution for this specific series."""
-    if score > low_q:
-        return "INFO"
-    elif score > high_q:
-        return "LOW"
-    elif score > 2 * high_q - low_q:
-        return "MEDIUM"
-    else:
-        return "HIGH"
 
 
 def run_forecast(resource_id: str, timestamps: List[str], values: List[float], modeldir: str) -> dict:
@@ -55,7 +40,7 @@ def run_forecast(resource_id: str, timestamps: List[str], values: List[float], m
     predicted_delta = float(model.predict(row[FORECAST_FEATURES])[0])
     predicted = current + predicted_delta
     metric = _metric_name_for(resource_id)
-    if "cpu" in metric:
+    if "cpu" in metric or "mem" in metric:
         predicted = max(0.0, min(100.0, predicted))
     else:
         predicted = max(0.0, predicted)
@@ -77,13 +62,6 @@ def run_anomaly(resource_id: str, timestamps: List[str], values: List[float], mo
     is_anom = bool(model.predict(row[ANOMALY_FEATURES])[0] == -1)
     score = float(model.decision_function(row[ANOMALY_FEATURES])[0])
 
-    # NOTE: ideally low_q/high_q would be computed once from the TRAIN
-    # split and cached (see run_recommendation.py), not re-derived here.
-    # As a self-contained endpoint we approximate with fixed score bands
-    # instead of requiring the full training set at request time — this
-    # is coarser than the batch script's per-series thresholds and is a
-    # reasonable improvement to make later if severity accuracy matters
-    # more than endpoint simplicity.
     if not is_anom:
         severity = "INFO"
     elif score > -0.05:
@@ -99,9 +77,19 @@ def run_anomaly(resource_id: str, timestamps: List[str], values: List[float], mo
         "is_anomaly": is_anom,
         "severity": severity,
         "score": score,
-        "reason": "isolation forest flagged this point" if is_anom else "within learned normal range",
+        "reason": "isolation forest flagged abnormal pattern" if is_anom else "within learned normal distribution",
         "model_id": f"iforest_{resource_id}",
     }
+
+
+def run_cost(resource_id: str, current_utilization: float, predicted_utilization: float,
+             instance_type: Optional[str] = None) -> CostEstimate:
+    return estimate_cost_metrics(
+        resource_id=resource_id,
+        current_utilization=current_utilization,
+        predicted_utilization=predicted_utilization,
+        instance_type=instance_type,
+    )
 
 
 def run_recommend(inp: RecommendationInput, use_llm: bool = True) -> Recommendation:
@@ -109,12 +97,33 @@ def run_recommend(inp: RecommendationInput, use_llm: bool = True) -> Recommendat
 
 
 def run_analyze(resource_id: str, timestamps: List[str], values: List[float],
-                 modeldir: str, use_llm: bool = True) -> dict:
+                modeldir: str, use_llm: bool = True, instance_type: Optional[str] = None) -> dict:
     forecast = run_forecast(resource_id, timestamps, values, modeldir)
     anomaly = run_anomaly(resource_id, timestamps, values, modeldir)
+    
+    # Cost analysis
+    cost_obj = run_cost(
+        resource_id=resource_id,
+        current_utilization=forecast["current_value"],
+        predicted_utilization=forecast["predicted_value"],
+        instance_type=instance_type,
+    )
+    
+    cost_signal = CostSignal(
+        instance_type=cost_obj.instance_type,
+        hourly_rate_usd=cost_obj.hourly_rate_usd,
+        current_daily_cost_usd=cost_obj.current_daily_cost_usd,
+        idle_waste_daily_cost_usd=cost_obj.idle_waste_daily_cost_usd,
+        projected_monthly_cost_usd=cost_obj.projected_monthly_cost_usd,
+        estimated_daily_savings_usd=cost_obj.estimated_daily_savings_usd,
+        estimated_monthly_savings_usd=cost_obj.estimated_monthly_savings_usd,
+        recommended_instance_type=cost_obj.recommended_instance_type,
+        cost_status=cost_obj.cost_status,
+    )
 
     rec_input = RecommendationInput(
         resource_id=resource_id,
+        instance_type=cost_obj.instance_type,
         forecast=[ForecastSignal(
             metric=forecast["metric"],
             current_value=forecast["current_value"],
@@ -128,6 +137,7 @@ def run_analyze(resource_id: str, timestamps: List[str], values: List[float],
             score=anomaly["score"],
             reason=anomaly["reason"],
         )],
+        cost=cost_signal,
     )
     recommendation = run_recommend(rec_input, use_llm=use_llm)
 
@@ -135,6 +145,7 @@ def run_analyze(resource_id: str, timestamps: List[str], values: List[float],
         "resource_id": resource_id,
         "forecast": forecast,
         "anomaly": anomaly,
+        "cost": cost_obj.model_dump(),
         "recommendation": recommendation.model_dump(),
     }
 
@@ -144,4 +155,5 @@ def health_status(modeldir: str, use_llm_configured: bool) -> dict:
         "status": "ok",
         "available_resource_ids": available_resource_ids(modeldir),
         "gemini_api_key_configured": use_llm_configured,
+        "cost_engine_ready": True,
     }
