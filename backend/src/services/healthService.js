@@ -1,21 +1,28 @@
+
 const prisma = require("../config/db");
 
 const getHealthStatus = async () => {
-  let dbStatus = "disconnected";
   try {
-    await prisma.$queryRaw`SELECT 1`;
-    dbStatus = "connected";
-  } catch (err) {
-    dbStatus = `error: ${err.message}`;
-  }
+    const result = await prisma.$queryRaw`
+      SELECT
+        current_database() AS "databaseName",
+        current_setting('server_version') AS "version"
+    `;
 
-  return {
-    status: "ok",
-    database: dbStatus,
-    databaseName: "cloud_optimizer",
-    engine: "PostgreSQL 18.6",
-    message: "Backend API and database are running"
-  };
+    return {
+      status: "ok",
+      database: "connected",
+      databaseName: result[0].databaseName,
+      engine: `PostgreSQL ${result[0].version}`,
+      message: "Backend API and database are running"
+    };
+  } catch (err) {
+    return {
+      status: "error",
+      database: "disconnected",
+      message: err.message
+    };
+  }
 };
 
 module.exports = {
