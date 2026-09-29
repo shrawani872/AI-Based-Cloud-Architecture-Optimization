@@ -10,8 +10,9 @@ async function verify() {
   // 2. Insert test system log
   const log = await prisma.systemLog.create({
     data: {
+      id: `VERIFY-${Date.now()}`,
       level: "INFO",
-      message: "PostgreSQL 18.6 migration verification complete",
+      message: "PostgreSQL migration verification complete",
       context: { db: "cloud_optimizer", engine: "PostgreSQL" }
     }
   });
