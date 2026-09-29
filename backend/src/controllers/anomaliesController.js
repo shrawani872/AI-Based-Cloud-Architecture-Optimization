@@ -2,9 +2,29 @@ const prisma = require("../config/db");
 
 const getAnomalies = async (req, res, next) => {
   try {
+    const { severity, status, resourceId } = req.query;
+
+    const where = {};
+
+    if (severity) {
+      where.severity = severity;
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (resourceId) {
+      where.resourceId = resourceId;
+    }
+
     const anomalies = await prisma.anomaly.findMany({
-      orderBy: { detectedAt: 'desc' }
+      where,
+      orderBy: {
+        detectedAt: "desc",
+      },
     });
+
     res.json(anomalies);
   } catch (err) {
     next(err);
@@ -12,5 +32,5 @@ const getAnomalies = async (req, res, next) => {
 };
 
 module.exports = {
-  getAnomalies
+  getAnomalies,
 };

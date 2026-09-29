@@ -3,32 +3,58 @@ const prisma = require("../config/db");
 const getDashboardSummary = async (req, res, next) => {
   try {
     const activeRecommendations = await prisma.recommendation.findMany({
-      where: { status: "PENDING" }
+      where: { status: "ACTIVE" },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
     const activeAnomalies = await prisma.anomaly.findMany({
-      where: { status: "ACTIVE" }
+      where: { status: "OPEN" },
     });
 
+    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const anomalies24h = activeAnomalies.filter(
+      (anomaly) => anomaly.detectedAt >= last24Hours
+    );
+
     const totalPotentialSavings = activeRecommendations.reduce(
-      (sum, r) => sum + r.potentialSavings,
+      (sum, recommendation) => sum + recommendation.potentialSavings,
       0
     );
 
+    const totalCurrentCost = activeRecommendations.reduce(
+      (sum, recommendation) => sum + recommendation.currentCost,
+      0
+    );
+
+    const totalProjectedCost = activeRecommendations.reduce(
+      (sum, recommendation) => sum + recommendation.projectedCost,
+      0
+    );
+
+    const savingsPercent =
+      totalCurrentCost > 0
+        ? ((totalCurrentCost - totalProjectedCost) / totalCurrentCost) * 100
+        : 0;
+
     res.json({
-      monthlySpend: 28450.00,
-      spendChangePercent: -4.2,
-      projectedMonthlySpend: 22100.00,
-      potentialMonthlySavings: totalPotentialSavings || 6350.00,
-      savingsPercent: 22.3,
-      activeRecommendationsCount: activeRecommendations.length || 14,
-      pendingApprovalsCount: activeRecommendations.length || 5,
-      anomalies24hCount: activeAnomalies.length || 3,
-      criticalAnomaliesCount: activeAnomalies.filter(a => a.severity === 'CRITICAL').length || 1,
-      systemHealthScore: 98.4,
-      evaluatedResourcesCount: 142,
-      optimizedResourcesCount: 86,
-      topRecommendationsPreview: activeRecommendations.slice(0, 3)
+      monthlySpend: null,
+      spendChangePercent: null,
+      projectedMonthlySpend: null,
+      potentialMonthlySavings: totalPotentialSavings,
+      savingsPercent: Number(savingsPercent.toFixed(2)),
+      activeRecommendationsCount: activeRecommendations.length,
+      pendingApprovalsCount: activeRecommendations.length,
+      anomalies24hCount: anomalies24h.length,
+      criticalAnomaliesCount: activeAnomalies.filter(
+        (anomaly) => anomaly.severity === "CRITICAL"
+      ).length,
+      systemHealthScore: null,
+      evaluatedResourcesCount: null,
+      optimizedResourcesCount: null,
+      topRecommendationsPreview: activeRecommendations.slice(0, 3),
     });
   } catch (err) {
     next(err);
@@ -36,5 +62,5 @@ const getDashboardSummary = async (req, res, next) => {
 };
 
 module.exports = {
-  getDashboardSummary
+  getDashboardSummary,
 };

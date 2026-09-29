@@ -9,6 +9,7 @@ async function testCrudAllModels() {
     console.log('1. Testing AwsMetric model...');
     const metricCreated = await prisma.awsMetric.create({
       data: {
+        id: 'TEST-METRIC-001',
         instanceId: 'i-test-01',
         service: 'Amazon EC2',
         region: 'us-east-1',
@@ -41,6 +42,7 @@ async function testCrudAllModels() {
     console.log('\n2. Testing Anomaly model...');
     const anomalyCreated = await prisma.anomaly.create({
       data: {
+        id: 'TEST-ANOMALY-001',
         resourceId: 'vol-test-01',
         anomalyType: 'IOPS Surge',
         severity: 'HIGH',
@@ -72,6 +74,7 @@ async function testCrudAllModels() {
     console.log('\n3. Testing Forecast model...');
     const forecastCreated = await prisma.forecast.create({
       data: {
+        id: 'TEST-FORECAST-001',
         resourceId: 'global-cloud',
         targetMetric: 'Cost',
         forecastValue: 1250.00,
@@ -103,6 +106,7 @@ async function testCrudAllModels() {
     console.log('\n4. Testing Recommendation model...');
     const recCreated = await prisma.recommendation.create({
       data: {
+        id: 'TEST-RECOMMENDATION-001',
         resourceId: 'i-0a8b9c1d2e3f4g5',
         serviceName: 'Amazon EC2',
         recommendationType: 'RIGHTSIZING',
@@ -111,7 +115,8 @@ async function testCrudAllModels() {
         currentCost: 148.50,
         projectedCost: 74.25,
         potentialSavings: 74.25,
-        status: 'PENDING'
+        status: 'ACTIVE',
+        updatedAt: new Date()
       }
     });
     console.log('  - Create: PASS (ID:', recCreated.id, ')');
@@ -123,7 +128,10 @@ async function testCrudAllModels() {
 
     const recUpdated = await prisma.recommendation.update({
       where: { id: recCreated.id },
-      data: { status: 'APPROVED' }
+      data: {
+        status: 'APPROVED',
+        updatedAt: new Date()
+      }
     });
     console.log('  - Update: PASS (Status:', recUpdated.status, ')');
 
@@ -137,6 +145,7 @@ async function testCrudAllModels() {
     console.log('\n5. Testing SystemLog model...');
     const logCreated = await prisma.systemLog.create({
       data: {
+        id: 'TEST-LOG-001',
         level: 'INFO',
         message: 'Integration test system log entry',
         context: { testRun: true, environment: 'local' }
