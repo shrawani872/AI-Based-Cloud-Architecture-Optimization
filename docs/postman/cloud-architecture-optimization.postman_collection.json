@@ -1,0 +1,665 @@
+{
+  "info": {
+    "name": "Cloud Architecture Optimization API Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Backend API",
+      "item": [
+        {
+          "name": "Health & System",
+          "item": [
+            {
+              "name": "GET /api/v1/health",
+              "request": {
+                "method": "GET",
+                "url": "{{backend_url}}/health"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                      "pm.test('Response has status', function () { var jsonData = pm.response.json(); pm.expect(jsonData.status).to.exist; });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /api/v1/system/health",
+              "request": {
+                "method": "GET",
+                "url": "{{backend_url}}/system/health"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "AWS / AI Status",
+          "item": [
+            {
+              "name": "GET /api/v1/aws/status",
+              "request": {
+                "method": "GET",
+                "url": "{{backend_url}}/aws/status"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /api/v1/ai/status",
+              "request": {
+                "method": "GET",
+                "url": "{{backend_url}}/ai/status"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Dashboard",
+          "item": [
+            {
+              "name": "GET /api/v1/dashboard/summary",
+              "request": {
+                "method": "GET",
+                "url": "{{backend_url}}/dashboard/summary"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Telemetry",
+          "item": [
+            {
+              "name": "GET /api/v1/telemetry/metrics",
+              "request": {
+                "method": "GET",
+                "url": "{{backend_url}}/telemetry/metrics"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /api/v1/telemetry/resources",
+              "request": {
+                "method": "GET",
+                "url": "{{backend_url}}/telemetry/resources"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Anomalies",
+          "item": [
+            {
+              "name": "GET /api/v1/anomalies",
+              "request": {
+                "method": "GET",
+                "url": "{{backend_url}}/anomalies"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Forecasts",
+          "item": [
+            {
+              "name": "GET /api/v1/forecasts",
+              "request": {
+                "method": "GET",
+                "url": "{{backend_url}}/forecasts"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /api/v1/forecast (Valid)",
+              "request": {
+                "method": "POST",
+                "url": "{{backend_url}}/forecast",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"resourceId\":\"i-0a8b9c1d2e3f4g5\",\"horizon\":24}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () { pm.response.to.have.status(501); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /api/v1/forecast (Invalid - Missing resourceId)",
+              "request": {
+                "method": "POST",
+                "url": "{{backend_url}}/forecast",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"horizon\":24}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 400', function () { pm.response.to.have.status(501); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /api/v1/forecast (Invalid - Empty resourceId)",
+              "request": {
+                "method": "POST",
+                "url": "{{backend_url}}/forecast",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"resourceId\":\"\",\"horizon\":24}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 400', function () { pm.response.to.have.status(501); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /api/v1/forecast (Invalid - Missing horizon)",
+              "request": {
+                "method": "POST",
+                "url": "{{backend_url}}/forecast",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"resourceId\":\"i-0a8b9c1d2e3f4g5\"}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 400', function () { pm.response.to.have.status(501); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /api/v1/forecast (Invalid - Horizon = 0)",
+              "request": {
+                "method": "POST",
+                "url": "{{backend_url}}/forecast",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"resourceId\":\"i-0a8b9c1d2e3f4g5\",\"horizon\":0}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 400', function () { pm.response.to.have.status(501); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /api/v1/forecast (Invalid - Negative Horizon)",
+              "request": {
+                "method": "POST",
+                "url": "{{backend_url}}/forecast",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"resourceId\":\"i-0a8b9c1d2e3f4g5\",\"horizon\":-10}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 400', function () { pm.response.to.have.status(501); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /api/v1/forecast (Defect test - empty resourceId + 0 horizon)",
+              "request": {
+                "method": "POST",
+                "url": "{{backend_url}}/forecast",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"resourceId\":\"\",\"horizon\":0}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Should be 400', function () { pm.response.to.have.status(501); });"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Recommendations",
+          "item": [
+            {
+              "name": "GET /api/v1/recommendations",
+              "request": {
+                "method": "GET",
+                "url": "{{backend_url}}/recommendations"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /api/v1/recommendation (Valid)",
+              "request": {
+                "method": "POST",
+                "url": "{{backend_url}}/recommendation",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"project\":\"cloud-optimization-test\",\"provider\":\"AWS\"}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /api/v1/recommendation (Invalid schema)",
+              "request": {
+                "method": "POST",
+                "url": "{{backend_url}}/recommendation",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"somefield\":\"test\"}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 400', function () { pm.response.to.have.status(400); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /api/v1/recommendations/:id (Nonexistent)",
+              "request": {
+                "method": "GET",
+                "url": "{{backend_url}}/recommendations/nonexistent-id-123"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 404', function () { pm.response.to.have.status(404); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /api/v1/recommendations/:id/approve (Nonexistent)",
+              "request": {
+                "method": "POST",
+                "url": "{{backend_url}}/recommendations/nonexistent-id-123/approve"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 404', function () { pm.response.to.have.status(404); });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /api/v1/recommendations/:id/reject (Nonexistent)",
+              "request": {
+                "method": "POST",
+                "url": "{{backend_url}}/recommendations/nonexistent-id-123/reject"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 404', function () { pm.response.to.have.status(404); });"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "History",
+          "item": [
+            {
+              "name": "GET /api/v1/history",
+              "request": {
+                "method": "GET",
+                "url": "{{backend_url}}/history"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "AI Service API",
+      "item": [
+        {
+          "name": "GET /health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{ai_url}}/health"
+          }
+        },
+        {
+          "name": "POST /cost (Valid)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resource_id\": \"ec2_cpu_utilization_24ae8d\",\n  \"current_utilization\": 12.5,\n  \"predicted_utilization\": 15.0,\n  \"instance_type\": \"m5.large\"\n}"
+            },
+            "url": "{{ai_url}}/cost"
+          }
+        },
+        {
+          "name": "POST /forecast (Valid)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resource_id\": \"ec2_cpu_utilization_24ae8d\",\n  \"timestamps\": [\"2023-01-01T00:00:00Z\", \"2023-01-01T00:05:00Z\", \"2023-01-01T00:10:00Z\", \"2023-01-01T00:15:00Z\", \"2023-01-01T00:20:00Z\", \"2023-01-01T00:25:00Z\", \"2023-01-01T00:30:00Z\", \"2023-01-01T00:35:00Z\", \"2023-01-01T00:40:00Z\", \"2023-01-01T00:45:00Z\", \"2023-01-01T00:50:00Z\", \"2023-01-01T00:55:00Z\", \"2023-01-01T01:00:00Z\"],\n  \"values\": [50.1, 51.2, 50.8, 52.1, 51.5, 53.0, 50.5, 51.0, 52.2, 51.8, 50.9, 51.1, 52.0]\n}"
+            },
+            "url": "{{ai_url}}/forecast"
+          }
+        },
+        {
+          "name": "POST /forecast (Invalid - Missing values)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 422\", function () { pm.response.to.have.status(422); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resource_id\": \"ec2_cpu_utilization_24ae8d\",\n  \"timestamps\": [\"2023-01-01T00:00:00Z\"]\n}"
+            },
+            "url": "{{ai_url}}/forecast"
+          }
+        }
+      ]
+    }
+  ]
+}
