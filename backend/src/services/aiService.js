@@ -1,9 +1,14 @@
-const { getAIStatus } = require("../providers/ai/aiProvider");
+const { getAIStatus, generateForecast } = require("../providers/ai/aiProvider");
 
-const getAIProviderStatus = () => {
-  return getAIStatus();
+const getAIProviderStatus = async () => {
+  return await getAIStatus();
+};
+
+const getForecastFromAI = async (resourceId, timestamps, values) => {
+  return await generateForecast(resourceId, timestamps, values);
 };
 
 module.exports = {
-  getAIProviderStatus
+  getAIProviderStatus,
+  getForecastFromAI
 };
