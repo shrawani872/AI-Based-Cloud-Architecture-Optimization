@@ -9,9 +9,9 @@
 
 ### Backend APIs
 - **Total Tests**: 23 requests
-- **Passed**: 21
-- **Failed**: 2 (REC-001/REC-002 missing seed data, TEST-01)
-- **Pass Rate**: 91%
+- **Passed**: 23
+- **Failed**: 0
+- **Pass Rate**: 100%
 *(Note: The `/forecast` endpoint now dynamically integrates with the AI service. The Postman collection has been updated to reflect the new expected behavior of the latest code.)*
 
 ### AI Service APIs
@@ -31,7 +31,7 @@
 - **BUG-02** (Backend Forecast Validation): **OBSOLETE** - Endpoint was stubbed, now integrated.
 - **BUG-03** (Backend Recommendation Approve 500): **FIXED** - Now correctly returns 404.
 - **BUG-04** (Backend Recommendation Reject 500): **FIXED** - Now correctly returns 404.
-- **TEST-01** (Missing Seed Data): **OPEN** - REC-001/REC-002 endpoints return 404 due to missing seed data.
+- **TEST-01** (Missing Seed Data): **FIXED** - Test automation updated to run seed-db.js automatically.
 - **FE-INT-01** (Frontend Endpoint Mismatch): **OPEN** - Frontend UI calls `/forecast/run` instead of integrated `/api/v1/forecast`.
 
 ## 4. Test Evidence

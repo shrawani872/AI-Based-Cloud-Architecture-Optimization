@@ -6,7 +6,7 @@
 | **BUG-02** | Oct 02, 2026 | Backend | `POST /api/v1/forecast` | **OBSOLETE** | Med | Missing validation. (Endpoint was stubbed, now integrated). | Backend |
 | **BUG-03** | Oct 02, 2026 | Backend | `POST /api/v1/recommendations/:id/approve` | **FIXED** | Med | Approving nonexistent recommendation returned 500. Now 404. | Backend |
 | **BUG-04** | Oct 02, 2026 | Backend | `POST /api/v1/recommendations/:id/reject` | **FIXED** | Med | Rejecting nonexistent recommendation returned 500. Now 404. | Backend |
-| **TEST-01** | Oct 05, 2026 | Testing | `POST /api/v1/recommendations/*` | **OPEN** | Med | Local dev DB lacks required REC-001 and REC-002 records for E2E testing reproducibility. | Testing + Documentation |
+| **TEST-01** | Oct 05, 2026 | Testing | `POST /api/v1/recommendations/*` | **FIXED** | Med | Local dev DB lacks required REC-001 and REC-002 records for E2E testing reproducibility. | Testing + Documentation |
 | **FE-INT-01**| Oct 05, 2026 | Frontend/Backend | `POST /api/v1/forecast` | **OPEN** | High | Frontend hook `useForecast.js` calls mock endpoint `/forecast/run` instead of integrated backend `/api/v1/forecast`. | Frontend/Backend owner |
 
 ## Detailed Records
@@ -35,14 +35,14 @@
 - **Response**: `{"status":"error","message":"Recommendation not found"}`
 - **Conclusion**: Fixed by recent teammate commit.
 
-### TEST-01: REC-001 / REC-002 Test Data Missing (OPEN)
+### TEST-01: REC-001 / REC-002 Test Data Missing (FIXED)
 - **Payload**: `{"user": "test-admin"}` sent to `/recommendations/REC-001/approve` and `/recommendations/REC-002/reject`
 - **Expected**: HTTP 200 with status becoming APPROVED or REJECTED.
 - **Actual before test setup**: HTTP 404 Recommendation not found.
-- **Root cause**: The local development database does not contain the required REC-001 and REC-002 records. The application correctly returns 404 when the record doesn't exist.
-- **Existing solution discovered**: `backend/scripts/seed-db.js` creates REC-001 and REC-002, but the E2E test does not automatically invoke it.
+- **Root cause**: The local development database did not contain the required REC-001 and REC-002 records prior to E2E test execution. The application correctly returned 404.
+- **Existing solution discovered**: `backend/scripts/seed-db.js` creates REC-001 and REC-002.
 - **Classification**: Testing / Test Environment / Test Data Setup issue (NOT an application defect).
-- **Recommended resolution**: Wire the existing `seed-db.js` into the E2E test setup or create an appropriate dedicated test-fixture mechanism. (Do NOT change recommendation logic).
+- **Resolution**: Updated `seed-db.js` to be idempotent and added programmatic execution of `seed-db.js` directly within `test-api-e2e.js` prior to running the test suite. Retest passed successfully.
 
 ### FE-INT-01: Frontend/Backend Endpoint Mismatch (OPEN)
 - **Current frontend behavior**: `frontend/src/hooks/useForecast.js` calls `POST /forecast/run`.
