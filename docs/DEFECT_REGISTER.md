@@ -7,7 +7,8 @@
 | **BUG-03** | Oct 02, 2026 | Backend | `POST /api/v1/recommendations/:id/approve` | **FIXED** | Med | Approving nonexistent recommendation returned 500. Now 404. | Backend |
 | **BUG-04** | Oct 02, 2026 | Backend | `POST /api/v1/recommendations/:id/reject` | **FIXED** | Med | Rejecting nonexistent recommendation returned 500. Now 404. | Backend |
 | **TEST-01** | Oct 05, 2026 | Testing | `POST /api/v1/recommendations/*` | **FIXED** | Med | Local dev DB lacks required REC-001 and REC-002 records for E2E testing reproducibility. | Testing + Documentation |
-| **FE-INT-01**| Oct 05, 2026 | Frontend/Backend | `POST /api/v1/forecast` | **OPEN** | High | Frontend hook `useForecast.js` calls mock endpoint `/forecast/run` instead of integrated backend `/api/v1/forecast`. | Frontend/Backend owner |
+| **BUG-05** | Oct 05, 2026 | Frontend ↔ Backend | `POST /forecast/run` | **OPEN** | CRITICAL | Frontend forecast trigger uses mismatched endpoint (`/forecast/run` instead of `/api/v1/forecast`), blocking integration when mock mode is disabled. | Frontend ↔ Backend Integration |
+| **BUG-06** | Oct 05, 2026 | Backend | `POST /api/v1/forecast` | **OPEN** | MEDIUM | Generic error handler masks AI provider HTTP 502/503/504 errors by converting all 5xx errors to a generic HTTP 500 response. | Backend |
 
 ## Detailed Records
 
@@ -44,8 +45,15 @@
 - **Classification**: Testing / Test Environment / Test Data Setup issue (NOT an application defect).
 - **Resolution**: Updated `seed-db.js` to be idempotent and added programmatic execution of `seed-db.js` directly within `test-api-e2e.js` prior to running the test suite. Retest passed successfully.
 
-### FE-INT-01: Frontend/Backend Endpoint Mismatch (OPEN)
-- **Current frontend behavior**: `frontend/src/hooks/useForecast.js` calls `POST /forecast/run`.
+### BUG-05: Frontend Forecast Endpoint Mismatch (OPEN)
+- **Current frontend behavior**: `frontend/src/hooks/useForecast.js` currently calls `POST /forecast/run`.
 - **Integrated backend endpoint**: `POST /api/v1/forecast`.
-- **Classification**: Frontend ↔ Backend Integration Dependency (BLOCKED FOR FULL END-TO-END FORECAST FLOW).
-- **Required Action**: Frontend teammate must update the forecast API call to the integrated backend endpoint, remove/adjust mock-mode behavior, and handle the real backend response schema.
+- **Impact**: When mock mode is disabled, the frontend forecast trigger cannot correctly reach the integrated backend forecast endpoint, blocking live frontend forecast integration.
+- **Classification**: Frontend ↔ Backend Integration Dependency (CRITICAL).
+- **Required Action**: Frontend teammate must update the forecast API call to the integrated backend endpoint. (The frontend API client uses `/api/v1` as base, so it should call `/forecast`).
+
+### BUG-06: Backend Upstream Error Status Masking (OPEN)
+- **Problem**: The AI provider correctly maps an AI Service HTTP 500 response to HTTP 502. However, the generic backend error handler (`errorHandler.js`) subsequently converts errors with status >= 500 into a generic HTTP 500 response.
+- **Impact**: The backend API loses meaningful upstream error classification and cannot reliably distinguish 502 Bad Gateway, 503 Service Unavailable, or 504 Gateway Timeout from a generic backend 500 error. This is a non-blocking error classification issue.
+- **Classification**: Backend (MEDIUM).
+- **Required Action**: Backend teammate should update `errorHandler.js` to respect upstream 5xx status codes when available instead of defaulting to 500.
