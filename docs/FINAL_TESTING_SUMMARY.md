@@ -3,7 +3,9 @@
 ## Overview
 This document summarizes the final regression testing phase of the AI-Based Cloud Architecture Optimization repository against the latest `main` branch.
 
-**Latest Commit Tested**: `028a59c`
+**Overall Status**: NOT READY — BLOCKERS REMAIN
+
+**Latest Commit Tested**: `d9e527c`
 
 ## Test Execution Results
 
@@ -26,7 +28,8 @@ This document summarizes the final regression testing phase of the AI-Based Clou
 | **BUG-03** | Backend API | **FIXED** | POST approve on nonexistent recommendation ID now correctly returns `404 Not Found`. |
 | **BUG-04** | Backend API | **FIXED** | POST reject on nonexistent recommendation ID now correctly returns `404 Not Found`. |
 | **TEST-01** | Testing | **FIXED** | REC-001 / REC-002 missing seed data causing 404s in E2E tests resolved by automating seed script. |
-| **FE-INT-01**| Frontend | **INTEGRATION DEPENDENCY** | Frontend currently calling `/forecast/run` instead of integrated `/api/v1/forecast`. |
+| **BUG-05** | Frontend ↔ Backend | **OPEN DEFECT** | Frontend currently calling `/forecast/run` instead of integrated `/api/v1/forecast`. |
+| **BUG-06** | Backend | **OPEN DEFECT** | `errorHandler.js` overrides 502/503/504 status codes to a generic HTTP 500 response. |
 
 ## Key Findings & Gaps
 
@@ -40,9 +43,10 @@ This document summarizes the final regression testing phase of the AI-Based Clou
 
 | Issue | Category | Status | Owner | Impact | Required Action |
 |------|----------|--------|-------|--------|-----------------|
-| BUG-01 | AI/ML | OPEN | AI/ML owner | Forecast model execution | Fix model/dependency compatibility |
+| BUG-01 | AI/ML | OPEN | AI/ML | Forecast model execution | Fix model/dependency compatibility |
 | REC-001/REC-002 (TEST-01) | Testing | FIXED | Testing | E2E reproducibility | N/A - Resolved |
-| FE-INT-01 | Frontend/Backend | OPEN | Frontend/Backend owner | Forecast UI integration | Update frontend endpoint |
+| BUG-05 | Frontend ↔ Backend | OPEN | Frontend ↔ Backend Integration | Forecast UI integration | Update frontend endpoint |
+| BUG-06 | Backend | OPEN | Backend | Error classification | Update errorHandler.js to respect 5xx codes |
 
 ## Testing Artifacts Preserved
 - `docs/API_TESTING_REPORT.md`: Comprehensive API results.

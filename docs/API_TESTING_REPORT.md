@@ -27,12 +27,14 @@
   - **Note**: AI communication = PASS. Model execution = BUG-01. A valid forecast request with sufficient data will reach BUG-01 when model loading is attempted.
 
 ## 3. Defect Status (Regression)
-- **BUG-01** (AI Model Pickling): **OPEN** - `/forecast` returns 500 (mapped to 502).
+- **BUG-01** (AI Model Pickling): **OPEN** - `/forecast` model deserialization fails. AI returns 500.
+
 - **BUG-02** (Backend Forecast Validation): **OBSOLETE** - Endpoint was stubbed, now integrated.
 - **BUG-03** (Backend Recommendation Approve 500): **FIXED** - Now correctly returns 404.
 - **BUG-04** (Backend Recommendation Reject 500): **FIXED** - Now correctly returns 404.
 - **TEST-01** (Missing Seed Data): **FIXED** - Test automation updated to run seed-db.js automatically.
-- **FE-INT-01** (Frontend Endpoint Mismatch): **OPEN** - Frontend UI calls `/forecast/run` instead of integrated `/api/v1/forecast`.
+- **BUG-05** (Frontend Endpoint Mismatch): **OPEN** - Frontend UI calls `/forecast/run` instead of integrated `/api/v1/forecast`.
+- **BUG-06** (Backend Error Masking): **OPEN** - Backend `errorHandler.js` overrides 502/503/504 errors, returning generic 500.
 
 ## 4. Test Evidence
 See `docs/TEST_EVIDENCE_INDEX.md` and `docs/DEFECT_REGISTER.md` for detailed logs and steps to reproduce.

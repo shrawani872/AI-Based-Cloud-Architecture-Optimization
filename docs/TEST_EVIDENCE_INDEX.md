@@ -19,10 +19,10 @@ This document maps testing artifacts to their respective purposes and provides e
 - **BUG-01 Traceback:** `ModuleNotFoundError: No module named '_loss'` verified locally against AI service port 8000 via cURL.
 - **AI /health success:** verified locally via HTTP 200 OK.
 - **Backend /ai/status success:** verified locally via HTTP 200 OK.
-- **Forecast request reaching AI:** Logged during Backend regression. AI 422 successfully mapped to Backend 400. AI 500 successfully mapped to Backend 502.
+- **Forecast request reaching AI:** Logged during Backend regression. AI 422 successfully mapped to Backend 400. AI 500 mapped to Backend 502 by AI provider but masked as 500 by generic error handler (BUG-06).
 - **REC-001 404 due to missing seed:** Verified during E2E test execution.
 - **REC-002 404 due to missing seed:** Verified during E2E test execution.
-- **Frontend endpoint mismatch:** Verified by inspecting `frontend/src/hooks/useForecast.js`.
+- **Frontend endpoint mismatch (BUG-05):** Verified by inspecting `frontend/src/hooks/useForecast.js`.
 
 ## 4. Final Testing Deliverables
 - **File:** `FINAL_TESTING_SUMMARY.md`
