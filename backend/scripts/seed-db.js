@@ -5,21 +5,25 @@ async function seedDatabase() {
 
   // 1. Seed AwsMetrics
   const now = new Date();
+  const metrics = [];
   for (let i = 0; i < 24; i++) {
     const timestamp = new Date(now.getTime() - i * 3600 * 1000);
-    await prisma.awsMetric.create({
-      data: {
-        instanceId: 'i-0a8b9c1d2e3f4g5',
-        service: 'Amazon EC2',
-        region: 'us-east-1',
-        metricName: 'CPUUtilization',
-        metricValue: Number((25 + Math.sin(i) * 15 + Math.random() * 5).toFixed(2)),
-        unit: 'Percent',
-        timestamp,
-        metadata: { instanceType: 'c5.2xlarge', status: 'HEALTHY' }
-      }
+    metrics.push({
+      id: `METRIC-2026-${i}`,
+      instanceId: 'i-0a8b9c1d2e3f4g5',
+      service: 'Amazon EC2',
+      region: 'us-east-1',
+      metricName: 'CPUUtilization',
+      metricValue: Number((25 + Math.sin(i) * 15 + Math.random() * 5).toFixed(2)),
+      unit: 'Percent',
+      timestamp,
+      metadata: { instanceType: 'c5.2xlarge', status: 'HEALTHY' }
     });
   }
+  await prisma.awsMetric.createMany({
+    data: metrics,
+    skipDuplicates: true
+  });
 
   // 2. Seed Anomalies
   await prisma.anomaly.createMany({
@@ -98,7 +102,8 @@ async function seedDatabase() {
         currentCost: 148.50,
         projectedCost: 74.25,
         potentialSavings: 74.25,
-        status: 'PENDING'
+        status: 'PENDING',
+        updatedAt: new Date()
       },
       {
         id: 'REC-002',
@@ -110,7 +115,8 @@ async function seedDatabase() {
         currentCost: 320.00,
         projectedCost: 98.00,
         potentialSavings: 222.00,
-        status: 'PENDING'
+        status: 'PENDING',
+        updatedAt: new Date()
       },
       {
         id: 'REC-003',
@@ -122,19 +128,22 @@ async function seedDatabase() {
         currentCost: 326.60,
         projectedCost: 51.12,
         potentialSavings: 275.48,
-        status: 'APPROVED'
+        status: 'APPROVED',
+        updatedAt: new Date()
       }
     ],
     skipDuplicates: true
   });
 
   // 5. Seed SystemLogs
-  await prisma.systemLog.create({
-    data: {
+  await prisma.systemLog.createMany({
+    data: [{
+      id: 'SYSLOG-001',
       level: 'INFO',
       message: 'Cloud Optimizer database initialized and populated with seed records.',
       context: { engine: 'PostgreSQL 18.6', status: 'READY' }
-    }
+    }],
+    skipDuplicates: true
   });
 
   console.log('Database seeding complete!');

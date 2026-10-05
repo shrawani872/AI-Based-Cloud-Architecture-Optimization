@@ -12,7 +12,7 @@
 - **Passed**: 23
 - **Failed**: 0
 - **Pass Rate**: 100%
-*(Note: The `/forecast` endpoint now correctly returns 501 Not Implemented instead of failing validation, and `/recommendations/:id/approve` & `reject` now correctly return 404 instead of 500. The Postman collection has been updated to reflect the new expected behavior of the latest code.)*
+*(Note: The `/forecast` endpoint now dynamically integrates with the AI service. The Postman collection has been updated to reflect the new expected behavior of the latest code.)*
 
 ### AI Service APIs
 - **Total Tests**: 4 requests
@@ -21,16 +21,18 @@
 - **Pass Rate**: 75%
 
 ### Integration Tests
-- **Total Tests**: 5 scenarios
-- **Passed**: 0
-- **Failed**: 5
-- **Status**: The Node.js backend does not currently communicate with the FastAPI service. The `/api/v1/forecast` endpoint explicitly returns a `501 Not Implemented`, stating: 'Forecast generation is handled by the ML service and is not implemented in the backend yet.' This is an expected integration gap awaiting future implementation.
+- **Status**: The Node.js backend successfully communicates with the FastAPI service.
+  - **GET /api/v1/ai/status**: AI status reflects actual AI service health (HTTP 200 with connected AI status).
+  - **POST /api/v1/forecast**: Backend successfully contacted AI service. Tested with payload `{"resourceId": "ec2_cpu_utilization_24ae8d", "horizon": 24}`. AI returned HTTP 422 (insufficient history), Backend correctly mapped this to HTTP 400.
+  - **Note**: AI communication = PASS. Model execution = BUG-01. A valid forecast request with sufficient data will reach BUG-01 when model loading is attempted.
 
 ## 3. Defect Status (Regression)
-- **BUG-01** (AI Model Pickling): **STILL OPEN** - `/forecast` returns 500.
-- **BUG-02** (Backend Forecast Validation): **OBSOLETE** - Endpoint now returns 501 intentionally.
+- **BUG-01** (AI Model Pickling): **OPEN** - `/forecast` returns 500 (mapped to 502).
+- **BUG-02** (Backend Forecast Validation): **OBSOLETE** - Endpoint was stubbed, now integrated.
 - **BUG-03** (Backend Recommendation Approve 500): **FIXED** - Now correctly returns 404.
 - **BUG-04** (Backend Recommendation Reject 500): **FIXED** - Now correctly returns 404.
+- **TEST-01** (Missing Seed Data): **FIXED** - Test automation updated to run seed-db.js automatically.
+- **FE-INT-01** (Frontend Endpoint Mismatch): **OPEN** - Frontend UI calls `/forecast/run` instead of integrated `/api/v1/forecast`.
 
 ## 4. Test Evidence
 See `docs/TEST_EVIDENCE_INDEX.md` and `docs/DEFECT_REGISTER.md` for detailed logs and steps to reproduce.

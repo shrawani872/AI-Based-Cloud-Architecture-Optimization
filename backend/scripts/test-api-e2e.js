@@ -15,8 +15,13 @@ app.use(express.json());
 app.use('/api/v1', apiRoutes);
 app.use(errorHandler);
 
+const { execSync } = require('child_process');
+
 async function runApiE2ETests() {
   console.log('=== STARTING BACKEND HTTP API END-TO-END TESTS ===\n');
+  
+  console.log('Running test data setup (seed-db.js)...');
+  execSync('node scripts/seed-db.js', { stdio: 'inherit' });
 
   // Reset test recommendations to ACTIVE so the test is repeatable.
   await prisma.recommendation.updateMany({
