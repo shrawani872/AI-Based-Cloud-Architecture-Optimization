@@ -4,6 +4,6 @@ pydantic
 joblib
 pandas
 numpy
-scikit-learn
+scikit-learn==1.4.2
 google-genai
 python-dotenv
