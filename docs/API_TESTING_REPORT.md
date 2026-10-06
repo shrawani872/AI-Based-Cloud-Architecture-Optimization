@@ -27,7 +27,7 @@
   - **Note**: AI communication = PASS. Model execution = BUG-01. A valid forecast request with sufficient data will reach BUG-01 when model loading is attempted.
 
 ## 3. Defect Status (Regression)
-- **BUG-01** (AI Model Pickling): **OPEN** - `/forecast` model deserialization fails. AI returns 500.
+- **BUG-01** (AI Forecast Model Deserialization): **OPEN** - `/forecast` model deserialization fails with `ModuleNotFoundError: No module named '_loss'` even on verified Python 3.12 / scikit-learn 1.4.2 environment. AI returns 500.
 
 - **BUG-02** (Backend Forecast Validation): **OBSOLETE** - Endpoint was stubbed, now integrated.
 - **BUG-03** (Backend Recommendation Approve 500): **FIXED** - Now correctly returns 404.
