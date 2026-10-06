@@ -2,28 +2,32 @@
 
 | Defect ID | Date | Component | Endpoint | Status | Severity | Description | Owner |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **BUG-01** | Oct 02, 2026 | AI Service | `POST /forecast` | **OPEN** | CRITICAL | AI Forecast Model Deserialization / Serialized Model Compatibility Failure (`ModuleNotFoundError: No module named '_loss'`). | AI/ML Team |
+| **BUG-01** | Oct 02, 2026 | AI Service | `POST /forecast` | **RESOLVED** | CRITICAL | AI Forecast Model Deserialization / Serialized Model Compatibility Failure (`ModuleNotFoundError: No module named '_loss'`). | AI/ML Team |
 | **BUG-02** | Oct 02, 2026 | Backend | `POST /api/v1/forecast` | **OBSOLETE** | Med | Missing validation. (Endpoint was stubbed, now integrated). | Backend |
 | **BUG-03** | Oct 02, 2026 | Backend | `POST /api/v1/recommendations/:id/approve` | **FIXED** | Med | Approving nonexistent recommendation returned 500. Now 404. | Backend |
 | **BUG-04** | Oct 02, 2026 | Backend | `POST /api/v1/recommendations/:id/reject` | **FIXED** | Med | Rejecting nonexistent recommendation returned 500. Now 404. | Backend |
 | **TEST-01** | Oct 05, 2026 | Testing | `POST /api/v1/recommendations/*` | **FIXED** | Med | Local dev DB lacks required REC-001 and REC-002 records for E2E testing reproducibility. | Testing + Documentation |
 | **BUG-05** | Oct 05, 2026 | Frontend ↔ Backend | `POST /forecast/run` | **OPEN** | CRITICAL | Frontend forecast trigger uses mismatched endpoint (`/forecast/run` instead of `/api/v1/forecast`), blocking integration when mock mode is disabled. | Frontend ↔ Backend Integration |
-| **BUG-06** | Oct 05, 2026 | Backend | `POST /api/v1/forecast` | **OPEN** | MEDIUM | Generic error handler masks AI provider HTTP 502/503/504 errors by converting all 5xx errors to a generic HTTP 500 response. | Backend |
+| **BUG-06** | Oct 05, 2026 | Backend | `POST /api/v1/forecast` | **RESOLVED** | MEDIUM | Generic error handler masks AI provider HTTP 502/503/504 errors by converting all 5xx errors to a generic HTTP 500 response. | Backend |
 
 ## Detailed Records
 
-### BUG-01: AI Forecast Model Deserialization / Serialized Model Compatibility Failure (OPEN)
+### BUG-01: AI Forecast Model Deserialization / Serialized Model Compatibility Failure (RESOLVED)
 - **Component**: AI Service (app/model_registry.py -> joblib.load)
 - **Category**: AI/ML / Model Compatibility
-- **Status**: OPEN (BLOCKING: YES)
+- **Status**: RESOLVED (Fix commit b79c821)
 - **Severity**: CRITICAL
 - **Priority**: HIGH
 - **Owner**: AI/ML Team
-- **Current Root Cause**: The forecast model file `forecast_ec2_cpu_utilization_24ae8d.joblib` cannot be deserialized in the project's intended Python 3.12.10 / scikit-learn 1.4.2 environment. The model's serialized pickle contains a reference to a top-level module named `_loss`. During joblib/pickle deserialization, Python attempts to import `_loss`, but the installed scikit-learn implementation exposes the corresponding functionality under the namespace `sklearn._loss`. This failure persists even after recreating the environment with the required `scikit-learn==1.4.2` and verifying `sklearn._loss` exists, indicating that the existing serialized model itself is incompatible/corrupted relative to the runtime expected by the project.
-- **Error Trace**: `ModuleNotFoundError: No module named '_loss'`
-- **Previous Hypothesis (Invalidated)**: Initially diagnosed as a local environment mismatch (Python 3.14 + scikit-learn 1.9.1). The teammate pinned `scikit-learn==1.4.2` (commit deab802). A new environment was created matching these exact requirements, but direct joblib loading still fails with the identical error. Therefore, the original diagnosis of a simple local environment mismatch is NO LONGER VALID as the final root cause.
-- **Impact**: Blocks AI forecast model loading, AI `/forecast` functionality, Backend -> AI forecast integration verification, and end-to-end forecast testing. Overall project status remains NOT READY.
-- **Recommended Action**: AI/ML owner should inspect the model-generation/training environment and regenerate/retrain the forecast model using a controlled, compatible environment. The regenerated model MUST be tested using `joblib.load(...)` before replacing the existing model.
+- **Current Root Cause**: The forecast model file `forecast_ec2_cpu_utilization_24ae8d.joblib` required scikit-learn 1.5.1 instead of 1.4.2.
+- **Error Trace**: `ModuleNotFoundError: No module named '_loss'` no longer occurs.
+- **Verified Fix**: Re-pinning `scikit-learn==1.5.1` in the AI Service resolves the issue. Model deserialization now succeeds.
+- **Integration Test Results**:
+  - AI `/health` → HTTP 200
+  - AI `/forecast` → HTTP 200
+  - Invalid forecast validation → HTTP 422
+  - Backend → AI E2E forecast passes successfully.
+  - Backend persists the forecast successfully into the database and returns HTTP 200.
 
 ### BUG-02: Backend Forecast Missing Validation (OBSOLETE)
 - **Status Change**: As of commit `028a59c`, this endpoint has been intentionally stubbed out. It now returns `501 Not Implemented` indicating the AI integration is pending. The original validation bug is obsolete as the code path is removed.
@@ -56,8 +60,16 @@
 - **Classification**: Frontend ↔ Backend Integration Dependency (CRITICAL).
 - **Required Action**: Frontend teammate must update the forecast API call to the integrated backend endpoint. (The frontend API client uses `/api/v1` as base, so it should call `/forecast`).
 
-### BUG-06: Backend Upstream Error Status Masking (OPEN)
+### BUG-06: Backend Upstream Error Status Masking (RESOLVED)
 - **Problem**: The AI provider correctly maps an AI Service HTTP 500 response to HTTP 502. However, the generic backend error handler (`errorHandler.js`) subsequently converts errors with status >= 500 into a generic HTTP 500 response.
-- **Impact**: The backend API loses meaningful upstream error classification and cannot reliably distinguish 502 Bad Gateway, 503 Service Unavailable, or 504 Gateway Timeout from a generic backend 500 error. This is a non-blocking error classification issue.
+- **Impact**: The backend API loses meaningful upstream error classification and cannot reliably distinguish 502 Bad Gateway, 503 Service Unavailable, or 504 Gateway Timeout from a generic backend 500 error.
 - **Classification**: Backend (MEDIUM).
-- **Required Action**: Backend teammate should update `errorHandler.js` to respect upstream 5xx status codes when available instead of defaulting to 500.
+- **Status**: RESOLVED (Fix commit 60b5dc8).
+- **Verified Behavior**:
+  - Controlled 502/503/504 statuses are now preserved.
+  - AI 500 → Backend 502
+  - AI 422 → Backend 400
+  - AI timeout → Backend 504
+  - AI connection refused → Backend 503
+  - Unexpected internal errors remain sanitized as HTTP 500.
+  - Regression/simulation tests passed.
