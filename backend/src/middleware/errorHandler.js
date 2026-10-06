@@ -3,7 +3,10 @@ const errorHandler = (err, req, res, next) => {
 
   const statusCode = err.statusCode || 500;
 
-  if (statusCode >= 400 && statusCode < 500) {
+  if (
+    (statusCode >= 400 && statusCode < 500) ||
+    (statusCode >= 502 && statusCode <= 504)
+  ) {
     return res.status(statusCode).json({
       status: "error",
       message: err.message || "Request failed"
