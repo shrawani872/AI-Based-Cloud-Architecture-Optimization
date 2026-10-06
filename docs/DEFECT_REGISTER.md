@@ -2,7 +2,7 @@
 
 | Defect ID | Date | Component | Endpoint | Status | Severity | Description | Owner |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **BUG-01** | Oct 02, 2026 | AI Service | `POST /forecast` | **OPEN** | High | AI model pickling incompatibility (`ModuleNotFoundError: No module named '_loss'`). Probable root cause: serialized model/runtime compatibility mismatch. | AI/ML owner |
+| **BUG-01** | Oct 02, 2026 | AI Service | `POST /forecast` | **OPEN** | CRITICAL | AI Forecast Model Deserialization / Serialized Model Compatibility Failure (`ModuleNotFoundError: No module named '_loss'`). | AI/ML Team |
 | **BUG-02** | Oct 02, 2026 | Backend | `POST /api/v1/forecast` | **OBSOLETE** | Med | Missing validation. (Endpoint was stubbed, now integrated). | Backend |
 | **BUG-03** | Oct 02, 2026 | Backend | `POST /api/v1/recommendations/:id/approve` | **FIXED** | Med | Approving nonexistent recommendation returned 500. Now 404. | Backend |
 | **BUG-04** | Oct 02, 2026 | Backend | `POST /api/v1/recommendations/:id/reject` | **FIXED** | Med | Rejecting nonexistent recommendation returned 500. Now 404. | Backend |
@@ -12,14 +12,18 @@
 
 ## Detailed Records
 
-### BUG-01: AI Forecast Model Loading Error (OPEN)
+### BUG-01: AI Forecast Model Deserialization / Serialized Model Compatibility Failure (OPEN)
 - **Component**: AI Service (app/model_registry.py -> joblib.load)
-- **Expected**: Valid forecast request should produce a prediction.
-- **Actual**: AI service returns HTTP 500 during model deserialization.
-- **Backend behavior**: AI HTTP 500 is mapped to HTTP 502 Bad Gateway.
+- **Category**: AI/ML / Model Compatibility
+- **Status**: OPEN (BLOCKING: YES)
+- **Severity**: CRITICAL
+- **Priority**: HIGH
+- **Owner**: AI/ML Team
+- **Current Root Cause**: The forecast model file `forecast_ec2_cpu_utilization_24ae8d.joblib` cannot be deserialized in the project's intended Python 3.12.10 / scikit-learn 1.4.2 environment. The model's serialized pickle contains a reference to a top-level module named `_loss`. During joblib/pickle deserialization, Python attempts to import `_loss`, but the installed scikit-learn implementation exposes the corresponding functionality under the namespace `sklearn._loss`. This failure persists even after recreating the environment with the required `scikit-learn==1.4.2` and verifying `sklearn._loss` exists, indicating that the existing serialized model itself is incompatible/corrupted relative to the runtime expected by the project.
 - **Error Trace**: `ModuleNotFoundError: No module named '_loss'`
-- **Probable root cause**: Serialized model/runtime compatibility mismatch. The exact original training environment cannot be confirmed because dependency versions were not pinned (requirements.txt) and model metadata is unavailable.
-- **Recommended resolution**: Identify a compatible dependency environment and pin versions, OR retrain/regenerate the model artifacts in the supported environment. Either approach requires validation of model behavior before acceptance.
+- **Previous Hypothesis (Invalidated)**: Initially diagnosed as a local environment mismatch (Python 3.14 + scikit-learn 1.9.1). The teammate pinned `scikit-learn==1.4.2` (commit deab802). A new environment was created matching these exact requirements, but direct joblib loading still fails with the identical error. Therefore, the original diagnosis of a simple local environment mismatch is NO LONGER VALID as the final root cause.
+- **Impact**: Blocks AI forecast model loading, AI `/forecast` functionality, Backend -> AI forecast integration verification, and end-to-end forecast testing. Overall project status remains NOT READY.
+- **Recommended Action**: AI/ML owner should inspect the model-generation/training environment and regenerate/retrain the forecast model using a controlled, compatible environment. The regenerated model MUST be tested using `joblib.load(...)` before replacing the existing model.
 
 ### BUG-02: Backend Forecast Missing Validation (OBSOLETE)
 - **Status Change**: As of commit `028a59c`, this endpoint has been intentionally stubbed out. It now returns `501 Not Implemented` indicating the AI integration is pending. The original validation bug is obsolete as the code path is removed.

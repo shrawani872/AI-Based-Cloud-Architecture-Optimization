@@ -23,7 +23,7 @@ This document summarizes the final regression testing phase of the AI-Based Clou
 
 | Defect ID | Component | Status | Description |
 | :--- | :--- | :--- | :--- |
-| **BUG-01** | AI Service | **OPEN DEFECT** | AI model pickling error (`ModuleNotFoundError: No module named '_loss'`) on `/forecast`. |
+| **BUG-01** | AI Service | **OPEN DEFECT** | AI Forecast Model Deserialization / Serialized Model Compatibility Failure (`ModuleNotFoundError: No module named '_loss'`). Blocks model loading on `/forecast`. |
 | **BUG-02** | Backend API | **OBSOLETE** | Missing validation on `/forecast`. Endpoint is now intentionally stubbed to `501 Not Implemented`. |
 | **BUG-03** | Backend API | **FIXED** | POST approve on nonexistent recommendation ID now correctly returns `404 Not Found`. |
 | **BUG-04** | Backend API | **FIXED** | POST reject on nonexistent recommendation ID now correctly returns `404 Not Found`. |
