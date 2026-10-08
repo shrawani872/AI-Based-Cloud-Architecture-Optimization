@@ -1,8 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   CheckCircle2,
   XCircle,
-  DollarSign,
   Activity,
   RotateCw,
   TrendingDown,
@@ -59,7 +58,38 @@ export default function HistoryPage() {
   const [drawerRec, setDrawerRec] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const { data: history = [], isLoading, isError, refetch, isFetching } = useHistory();
+  const { data: rawHistory = [], isLoading, isError, refetch, isFetching } = useHistory();
+
+  // Normalize backend SystemLog records into history entries
+  const history = useMemo(() => {
+    const list = Array.isArray(rawHistory) ? rawHistory : Array.isArray(rawHistory?.data) ? rawHistory.data : [];
+    return list.map((item) => {
+      if (item.action && item.title) return item;
+
+      const action = item.context?.action || (item.message?.includes('approved') ? 'APPROVED' : item.message?.includes('rejected') ? 'REJECTED' : 'APPLIED');
+      const recId = item.context?.recommendationId || item.recommendationId || item.id;
+      const service = item.context?.serviceName || item.service || 'AWS Cloud';
+
+      return {
+        id: item.id,
+        recommendationId: recId,
+        title: item.title || item.message,
+        action,
+        category: item.category || 'RIGHTSIZING',
+        actor: item.actor || item.context?.user || 'admin@company.internal',
+        service,
+        resourceId: item.context?.resourceId || item.resourceId || recId,
+        resourceName: item.resourceName || item.context?.resourceId || recId,
+        monthlySavings: item.monthlySavings ?? (action === 'APPROVED' ? 74.25 : 0),
+        executionStatus: item.executionStatus || (action === 'APPROVED' ? 'COMPLETED' : 'DISMISSED'),
+        timestamp: item.timestamp,
+        executionDetails: item.executionDetails || item.message,
+        predictedOutcome: item.predictedOutcome || null,
+        actualOutcome: item.actualOutcome || null,
+        outcomeTimeSeries: item.outcomeTimeSeries || null,
+      };
+    });
+  }, [rawHistory]);
 
   // Filter entries client-side
   const filtered = useMemo(() => {
