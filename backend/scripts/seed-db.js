@@ -5,21 +5,45 @@ async function seedDatabase() {
 
   // 1. Seed AwsMetrics
   const now = new Date();
+  // Realistic 24-hour CPU utilization profile (chronological: 23 hours ago to current hour)
+  // Models quiet overnight hours, a scheduled batch processing spike, morning ramp-up,
+  // peak afternoon business operations, and an evening taper down to steady baseline.
+  const realisticBaseProfiles = [
+    16.4, 18.2, 14.8, 51.7, 19.3, 17.5, // 23h-18h ago: overnight with a scheduled batch job spike
+    23.8, 31.4, 42.6, 48.1, 44.5, 52.3, // 17h-12h ago: morning ramp-up & start of business hours
+    59.1, 46.8, 54.2, 63.7, 49.6, 43.2, // 11h-6h ago: peak midday operations with natural variance
+    58.4, 47.9, 38.6, 32.1, 26.5, 23.4  // 5h-0h ago: evening tapering down to steady baseline
+  ];
+
   const metrics = [];
   for (let i = 0; i < 24; i++) {
     const timestamp = new Date(now.getTime() - i * 3600 * 1000);
+    const chronologicalIndex = 23 - i;
+    const base = realisticBaseProfiles[chronologicalIndex];
+    const jitter = Number(((Math.random() * 3.2) - 1.6).toFixed(2));
+    const metricValue = Number(Math.max(5, Math.min(95, base + jitter)).toFixed(2));
+
     metrics.push({
       id: `METRIC-2026-${i}`,
       instanceId: 'i-0a8b9c1d2e3f4g5',
       service: 'Amazon EC2',
       region: 'us-east-1',
       metricName: 'CPUUtilization',
-      metricValue: Number((25 + Math.sin(i) * 15 + Math.random() * 5).toFixed(2)),
+      metricValue,
       unit: 'Percent',
       timestamp,
       metadata: { instanceType: 'c5.2xlarge', status: 'HEALTHY' }
     });
   }
+
+  await prisma.awsMetric.deleteMany({
+    where: {
+      id: {
+        startsWith: 'METRIC-2026-'
+      }
+    }
+  });
+
   await prisma.awsMetric.createMany({
     data: metrics,
     skipDuplicates: true

@@ -2,19 +2,20 @@ const prisma = require("../config/db");
 
 const getAnomalies = async (req, res, next) => {
   try {
-    const { severity, status, resourceId } = req.query;
+    const { severity, status, state, resourceId } = req.query;
 
     const where = {};
 
-    if (severity) {
-      where.severity = severity;
+    if (severity && severity.toLowerCase() !== "all") {
+      where.severity = severity.toUpperCase();
     }
 
-    if (status) {
-      where.status = status;
+    const effectiveStatus = status || state;
+    if (effectiveStatus && effectiveStatus.toLowerCase() !== "all") {
+      where.status = effectiveStatus.toUpperCase();
     }
 
-    if (resourceId) {
+    if (resourceId && resourceId.toLowerCase() !== "all") {
       where.resourceId = resourceId;
     }
 

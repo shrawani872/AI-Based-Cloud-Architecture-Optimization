@@ -2,6 +2,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../lib/api';
 
 /**
+ * Helper to normalize backend recommendation schema to frontend UI expectations
+ */
+const normalizeRecommendation = (rec) => {
+  if (!rec || typeof rec !== 'object') return rec;
+  return {
+    ...rec,
+    service: rec.service || rec.serviceName,
+    category: rec.category || rec.recommendationType,
+    monthlySavings: rec.monthlySavings !== undefined ? rec.monthlySavings : rec.potentialSavings,
+    status: rec.status === 'ACTIVE' ? 'PENDING' : rec.status,
+    riskLevel: rec.riskLevel || 'LOW',
+  };
+};
+
+/**
  * Hook to fetch filtered AI recommendations list
  * @param {Object} [filters={}] - { status, category, search }
  */
@@ -12,7 +27,12 @@ export function useRecommendations(filters = {}) {
       const response = await apiClient.get('/recommendations', {
         params: filters,
       });
-      return response;
+      const list = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.data)
+        ? response.data
+        : [];
+      return list.map(normalizeRecommendation);
     },
   });
 }
@@ -26,7 +46,8 @@ export function useRecommendation(id) {
     queryKey: ['recommendations', id],
     queryFn: async () => {
       const response = await apiClient.get(`/recommendations/${id}`);
-      return response;
+      const item = response?.data && !Array.isArray(response.data) ? response.data : response;
+      return normalizeRecommendation(item);
     },
     enabled: Boolean(id),
   });
